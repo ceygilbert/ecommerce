@@ -20,7 +20,8 @@ import {
   ChevronDown,
   Menu,
   X,
-  Globe
+  Globe,
+  Users
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -34,6 +35,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout }) => {
 
   const menuItems = [
     { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/admin/customers', icon: Users, label: 'Customers' },
     { path: '/admin/products', icon: Package, label: 'Products', hasSub: true },
     { 
       label: 'Category', 

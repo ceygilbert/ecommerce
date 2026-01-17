@@ -9,6 +9,7 @@ import AdminProducts from './pages/admin/Products';
 import AdminCategories from './pages/admin/Categories';
 import AdminSubcategories from './pages/admin/Subcategories';
 import AdminBrands from './pages/admin/Brands';
+import AdminCustomers from './pages/admin/Customers';
 import AdminLayout from './components/AdminLayout';
 import { supabase } from './services/supabase';
 
@@ -59,6 +60,7 @@ const App: React.FC = () => {
         {isAdminAuthenticated ? (
           <Route path="/admin" element={<AdminLayout onLogout={handleAdminLogout} />}>
             <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="customers" element={<AdminCustomers />} />
             <Route path="products" element={<AdminProducts />} />
             <Route path="categories" element={<AdminCategories />} />
             <Route path="subcategories" element={<AdminSubcategories />} />

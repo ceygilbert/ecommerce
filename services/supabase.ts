@@ -40,5 +40,37 @@ export const mockDb = {
       image_url: 'https://picsum.photos/400/300?laptop',
       description: 'High performance gaming laptop.'
     }
+  ],
+  profiles: [
+    {
+      id: 'p1',
+      full_name: 'Alex Johnson',
+      email: 'alex.j@example.com',
+      avatar_url: 'https://i.pravatar.cc/150?u=p1',
+      phone: '+1 234 567 8901',
+      address: '123 Tech Lane, Silicon Valley, CA',
+      status: 'active',
+      created_at: '2025-01-15T10:00:00Z'
+    },
+    {
+      id: 'p2',
+      full_name: 'Sarah Miller',
+      email: 'sarah.m@example.com',
+      avatar_url: 'https://i.pravatar.cc/150?u=p2',
+      phone: '+1 987 654 3210',
+      address: '456 Innovation Dr, Austin, TX',
+      status: 'active',
+      created_at: '2025-02-10T14:30:00Z'
+    },
+    {
+      id: 'p3',
+      full_name: 'David Chen',
+      email: 'd.chen@example.com',
+      avatar_url: 'https://i.pravatar.cc/150?u=p3',
+      phone: '+1 555 0199',
+      address: '789 Digital Way, Seattle, WA',
+      status: 'suspended',
+      created_at: '2024-12-05T09:15:00Z'
+    }
   ]
 };

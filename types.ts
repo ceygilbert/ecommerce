@@ -37,3 +37,14 @@ export interface User {
   email: string;
   role: 'admin' | 'user';
 }
+
+export interface Profile {
+  id: string;
+  full_name: string;
+  email: string;
+  avatar_url?: string;
+  phone?: string;
+  address?: string;
+  status: 'active' | 'suspended';
+  created_at: string;
+}
