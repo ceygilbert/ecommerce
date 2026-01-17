@@ -1,9 +1,23 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-export const generateProductDescription = async (productName: string, specs: string) => {
+const getApiKey = () => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+    return (typeof process !== 'undefined' && process.env && process.env.API_KEY) || '';
+  } catch {
+    return '';
+  }
+};
+
+export const generateProductDescription = async (productName: string, specs: string) => {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    console.warn("Gemini API Key missing.");
+    return "Description generation is unavailable without an API key.";
+  }
+
+  try {
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Generate a compelling, professional e-commerce product description for an IT store. 
