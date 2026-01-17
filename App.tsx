@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
 import AdminLogin from './pages/admin/Login';
 import AdminRegister from './pages/admin/Register';
@@ -33,7 +33,14 @@ const App: React.FC = () => {
   };
 
   if (isAdminAuthenticated === null) {
-    return <div className="min-h-screen flex items-center justify-center bg-white font-bold text-[#6C1DDB]">Initializing Lexron...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-purple-100 border-t-[#6C1DDB] rounded-full animate-spin"></div>
+          <p className="font-bold text-[#6C1DDB] animate-pulse">Initializing Lexron...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -42,11 +49,11 @@ const App: React.FC = () => {
         <Route path="/" element={<Home />} />
         <Route 
           path="/admin/login" 
-          element={isAdminAuthenticated ? <Navigate to="/admin/dashboard" /> : <AdminLogin />} 
+          element={isAdminAuthenticated ? <Navigate to="/admin/dashboard" replace /> : <AdminLogin />} 
         />
         <Route 
           path="/admin/register" 
-          element={isAdminAuthenticated ? <Navigate to="/admin/dashboard" /> : <AdminRegister />} 
+          element={isAdminAuthenticated ? <Navigate to="/admin/dashboard" replace /> : <AdminRegister />} 
         />
 
         {isAdminAuthenticated ? (
@@ -56,13 +63,13 @@ const App: React.FC = () => {
             <Route path="categories" element={<AdminCategories />} />
             <Route path="subcategories" element={<AdminSubcategories />} />
             <Route path="brands" element={<AdminBrands />} />
-            <Route index element={<Navigate to="/admin/dashboard" />} />
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
           </Route>
         ) : (
-          <Route path="/admin/*" element={<Navigate to="/admin/login" />} />
+          <Route path="/admin/*" element={<Navigate to="/admin/login" replace />} />
         )}
 
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
