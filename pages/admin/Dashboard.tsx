@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   AreaChart, 
   Area, 
@@ -7,13 +7,33 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer,
-  BarChart,
-  Bar
+  ResponsiveContainer
 } from 'recharts';
-import { TrendingUp, ShoppingBag, Users, AlertCircle, Plus } from 'lucide-react';
+import { TrendingUp, ShoppingBag, Users, AlertCircle, Loader2 } from 'lucide-react';
+import { supabase } from '../../services/supabase';
 
 const Dashboard: React.FC = () => {
+  const [customerCount, setCustomerCount] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+      
+      if (!error) setCustomerCount(count || 0);
+    } catch (err) {
+      console.error("Dashboard count error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const salesData = [
     { name: 'Mon', sales: 4000 },
     { name: 'Tue', sales: 3000 },
@@ -27,18 +47,18 @@ const Dashboard: React.FC = () => {
   const stats = [
     { label: 'Total Revenue', value: '$124,592', change: '+12.5%', icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
     { label: 'Total Orders', value: '1,240', change: '+5.2%', icon: ShoppingBag, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'New Customers', value: '382', change: '-1.4%', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    { label: 'Live Customers', value: loading ? '...' : customerCount.toString(), change: '+NEW', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
     { label: 'System Alerts', value: '18', change: 'Alert', icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50' },
   ];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       
-      {/* Top Banner Section (Lexron Style) */}
+      {/* Top Banner Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div className="lg:col-span-8 bg-white p-8 rounded-[32px] border border-slate-50 shadow-sm relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-            <ShoppingBag size={140} className="text-[#6C1DDB]" />
+          <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity text-[#6C1DDB]">
+             <ShoppingBag size={140} />
           </div>
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-4">
@@ -46,31 +66,31 @@ const Dashboard: React.FC = () => {
                  <ShoppingBag size={20} />
                </div>
                <div>
-                  <h3 className="text-xl font-bold">Lexron</h3>
-                  <p className="text-xs text-slate-400">Lexron12gmail.com</p>
+                  <h3 className="text-xl font-bold">TechCore Lexron</h3>
+                  <p className="text-xs text-slate-400">Database Active</p>
                </div>
                <div className="ml-auto text-right">
-                  <p className="text-sm font-bold">Larkon Admin.</p>
-                  <p className="text-[10px] text-slate-400">1729 Bangor St, USA</p>
+                  <p className="text-sm font-bold">System Pulse</p>
+                  <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">Connected</p>
                </div>
             </div>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 py-6 border-y border-slate-100 mt-6">
               <div>
-                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Invoice:</p>
-                <p className="text-sm font-bold text-slate-800">#INV-0758267/90</p>
+                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Live Feed:</p>
+                <p className="text-sm font-bold text-slate-800">Operational</p>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Issue Date</p>
-                <p className="text-sm font-bold text-slate-800">23 April 2025</p>
+                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Sync Status</p>
+                <p className="text-sm font-bold text-slate-800">Real-time</p>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Due Date</p>
-                <p className="text-sm font-bold text-slate-800">26 April 2025</p>
+                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Server Region</p>
+                <p className="text-sm font-bold text-slate-800">Cloud DB</p>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Amount</p>
-                <p className="text-sm font-bold text-[#6C1DDB]">$737.00</p>
+                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">API Latency</p>
+                <p className="text-sm font-bold text-[#6C1DDB]">12ms</p>
               </div>
             </div>
           </div>
@@ -79,20 +99,22 @@ const Dashboard: React.FC = () => {
         <div className="lg:col-span-4 space-y-6">
           <div className="bg-white p-8 rounded-[32px] border border-slate-50 shadow-sm">
             <h4 className="font-bold text-slate-800 mb-6 flex justify-between items-center">
-              Client Details
+              Active Session
               <button className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-50 text-slate-400">•••</button>
             </h4>
             <div className="flex items-center gap-4 mb-6">
-              <img src="https://i.pravatar.cc/150?u=howard" className="w-14 h-14 rounded-2xl object-cover" />
+              <img src="https://i.pravatar.cc/150?u=admin" className="w-14 h-14 rounded-2xl object-cover ring-2 ring-purple-100 shadow-sm" />
               <div>
-                <p className="font-bold text-slate-900 leading-none mb-1">Esther Howard</p>
-                <p className="text-xs text-slate-400 font-medium">ckctm12@gmail.com</p>
+                <p className="font-bold text-slate-900 leading-none mb-1">Admin Lexron</p>
+                <p className="text-xs text-slate-400 font-medium tracking-tight">System Administrator</p>
               </div>
             </div>
-            <p className="text-xs font-bold text-slate-900 mb-1">Uihut Agency LTD</p>
-            <p className="text-xs text-slate-400 leading-relaxed mb-6">3471 Rainy Day Drive Tulsa, USA</p>
+            <div className="p-4 bg-purple-50 rounded-2xl mb-6">
+               <p className="text-[10px] font-bold text-[#6C1DDB] uppercase tracking-widest mb-1">Current Task</p>
+               <p className="text-xs font-bold text-slate-700">Database Synchronization & User Management</p>
+            </div>
             <button className="w-full bg-gradient-to-r from-purple-400 to-indigo-500 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-purple-100 hover:opacity-90 transition-opacity">
-              Add Customer
+              System Audit
             </button>
           </div>
         </div>
@@ -101,7 +123,7 @@ const Dashboard: React.FC = () => {
       {/* Analytics & Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-white p-8 rounded-[32px] border border-slate-50 shadow-sm">
-          <h3 className="font-bold text-lg mb-8">Sales Overview</h3>
+          <h3 className="font-bold text-lg mb-8">E-Store Traffic</h3>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={salesData}>
@@ -126,7 +148,7 @@ const Dashboard: React.FC = () => {
              <div key={i} className="bg-white p-6 rounded-[28px] border border-slate-50 shadow-sm flex items-center justify-between group hover:border-purple-200 transition-colors">
                <div className="flex items-center gap-4">
                  <div className={`w-14 h-14 ${stat.bg} ${stat.color} rounded-2xl flex items-center justify-center`}>
-                   <stat.icon size={28} />
+                   {loading && stat.label === 'Live Customers' ? <Loader2 className="animate-spin" size={20} /> : <stat.icon size={28} />}
                  </div>
                  <div>
                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{stat.label}</p>

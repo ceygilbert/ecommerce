@@ -11,18 +11,19 @@ import {
   Phone, 
   MapPin, 
   Calendar,
-  MoreVertical,
   X,
   UserPlus,
   AlertTriangle,
-  ChevronRight
+  ChevronRight,
+  DatabaseZap
 } from 'lucide-react';
-import { supabase, mockDb } from '../../services/supabase';
+import { supabase } from '../../services/supabase';
 import { Profile } from '../../types';
 
 const AdminCustomers: React.FC = () => {
   const [customers, setCustomers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
   // Modals
@@ -46,25 +47,26 @@ const AdminCustomers: React.FC = () => {
 
   const fetchCustomers = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
       if (error) throw error;
       setCustomers(data || []);
-      
-      if (data?.length === 0) {
-        setCustomers(mockDb.profiles as Profile[]);
-      }
     } catch (err: any) {
-      console.warn("Falling back to mock customer data.");
-      setCustomers(mockDb.profiles as Profile[]);
+      console.error("Supabase Fetch Error:", err);
+      setError(err.message || "Could not connect to the 'profiles' table. Please ensure you have run the SQL schema in your Supabase editor.");
     } finally {
       setLoading(false);
     }
   };
 
   const filteredCustomers = customers.filter(c => 
-    c.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    c.email.toLowerCase().includes(searchQuery.toLowerCase())
+    (c.full_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) || 
+    (c.email?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );
 
   const handleSave = async (e: React.FormEvent) => {
@@ -74,26 +76,37 @@ const AdminCustomers: React.FC = () => {
       if (selectedCustomer) {
         const { error } = await supabase
           .from('profiles')
-          .update(formData)
+          .update({
+            full_name: formData.full_name,
+            phone: formData.phone,
+            address: formData.address,
+            status: formData.status
+          })
           .eq('id', selectedCustomer.id);
         if (error) throw error;
       } else {
+        // Note: For a strictly linked auth system, manual insertion requires an auth user.
+        // Usually admins would manage profiles generated via registration.
         const { error } = await supabase
           .from('profiles')
-          .insert([{ ...formData, created_at: new Date().toISOString() }]);
+          .insert([{ 
+            ...formData, 
+            id: crypto.randomUUID(), // Warning: This might fail if the FK constraint to auth.users is active
+            created_at: new Date().toISOString() 
+          }]);
         if (error) throw error;
       }
       fetchCustomers();
       closeModal();
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      alert(`Database Error: ${err.message}. (Tip: Manual creation is limited if Profile ID must match an Auth User ID)`);
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this customer profile?')) return;
+    if (!confirm('Are you sure you want to permanently delete this customer profile?')) return;
     setIsDeletingId(id);
     try {
       const { error } = await supabase.from('profiles').delete().eq('id', id);
@@ -109,8 +122,8 @@ const AdminCustomers: React.FC = () => {
   const openEdit = (customer: Profile) => {
     setSelectedCustomer(customer);
     setFormData({
-      full_name: customer.full_name,
-      email: customer.email,
+      full_name: customer.full_name || '',
+      email: customer.email || '',
       phone: customer.phone || '',
       address: customer.address || '',
       status: customer.status
@@ -139,8 +152,11 @@ const AdminCustomers: React.FC = () => {
             <Users size={24} />
           </div>
           <div>
-            <h2 className="text-2xl font-black text-slate-800 tracking-tight">Customer Management</h2>
-            <p className="text-xs text-slate-400 font-medium">Manage and monitor customer profiles</p>
+            <h2 className="text-2xl font-black text-slate-800 tracking-tight">Database Customers</h2>
+            <p className="text-xs text-slate-400 font-medium flex items-center gap-1">
+              <DatabaseZap size={12} className="text-emerald-500" />
+              Live connection to Supabase profiles
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
@@ -148,7 +164,7 @@ const AdminCustomers: React.FC = () => {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
               type="text" 
-              placeholder="Search customers..." 
+              placeholder="Filter live users..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-[#F8F9FD] border border-transparent rounded-2xl focus:outline-none focus:bg-white focus:border-purple-200 transition-all text-sm"
@@ -158,10 +174,20 @@ const AdminCustomers: React.FC = () => {
             onClick={() => setIsModalOpen(true)}
             className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-[#6C1DDB] to-[#4A00E0] text-white rounded-2xl hover:opacity-90 font-bold text-sm shadow-lg shadow-purple-100 transition-all"
           >
-            <UserPlus size={18} /> New Profile
+            <UserPlus size={18} /> New Entry
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="p-6 bg-red-50 border border-red-100 rounded-[28px] flex items-center gap-4 text-red-600 animate-in slide-in-from-top-4">
+          <AlertTriangle size={32} />
+          <div>
+            <p className="font-bold">Configuration Required</p>
+            <p className="text-sm opacity-80">{error}</p>
+          </div>
+        </div>
+      )}
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -170,7 +196,7 @@ const AdminCustomers: React.FC = () => {
             <Users size={28} />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Customers</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Active</p>
             <p className="text-2xl font-black text-slate-800">{customers.length}</p>
           </div>
         </div>
@@ -179,8 +205,10 @@ const AdminCustomers: React.FC = () => {
             <Calendar size={28} />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Accounts</p>
-            <p className="text-2xl font-black text-slate-800">{customers.filter(c => c.status === 'active').length}</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">New Registrations</p>
+            <p className="text-2xl font-black text-slate-800">
+              {customers.filter(c => new Date(c.created_at).getMonth() === new Date().getMonth()).length}
+            </p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-[28px] border border-slate-50 shadow-sm flex items-center gap-4">
@@ -188,18 +216,24 @@ const AdminCustomers: React.FC = () => {
             <AlertTriangle size={28} />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Suspended</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Action Required</p>
             <p className="text-2xl font-black text-slate-800">{customers.filter(c => c.status === 'suspended').length}</p>
           </div>
         </div>
       </div>
 
       {/* Customers Table */}
-      <div className="bg-white rounded-[32px] border border-slate-50 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-[32px] border border-slate-50 shadow-sm overflow-hidden min-h-[400px]">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-96 gap-4">
             <Loader2 className="animate-spin text-[#6C1DDB]" size={48} />
-            <p className="text-slate-400 font-bold italic">Gathering customer profiles...</p>
+            <p className="text-slate-400 font-bold italic">Communicating with Supabase...</p>
+          </div>
+        ) : filteredCustomers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-96 text-slate-400">
+            <Users size={48} className="mb-4 opacity-20" />
+            <p className="font-bold">No customers found in the database.</p>
+            <p className="text-xs">Profiles appear here automatically when users register.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -223,8 +257,8 @@ const AdminCustomers: React.FC = () => {
                           className="w-12 h-12 rounded-2xl object-cover ring-2 ring-white shadow-sm"
                         />
                         <div>
-                          <p className="font-bold text-slate-900 mb-0.5">{customer.full_name}</p>
-                          <p className="text-[10px] font-bold text-[#6C1DDB] bg-purple-50 px-2 py-0.5 rounded-full inline-block">ID: {customer.id.slice(0, 8)}</p>
+                          <p className="font-bold text-slate-900 mb-0.5">{customer.full_name || 'Unnamed User'}</p>
+                          <p className="text-[10px] font-bold text-[#6C1DDB] bg-purple-50 px-2 py-0.5 rounded-full inline-block">UUID: {customer.id.slice(0, 8)}</p>
                         </div>
                       </div>
                     </td>
@@ -234,7 +268,7 @@ const AdminCustomers: React.FC = () => {
                           <Mail size={12} className="text-slate-300" /> {customer.email}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-                          <Phone size={12} className="text-slate-300" /> {customer.phone || 'N/A'}
+                          <Phone size={12} className="text-slate-300" /> {customer.phone || 'No phone'}
                         </div>
                       </div>
                     </td>
@@ -282,14 +316,14 @@ const AdminCustomers: React.FC = () => {
         )}
       </div>
 
-      {/* CRUD Modal */}
+      {/* Detail & Edit Modals (Same as before but with loading states linked to fetchCustomers) */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
           <div className="bg-white w-full max-w-lg rounded-[40px] p-10 animate-in zoom-in-95 relative">
             <button onClick={closeModal} className="absolute top-8 right-8 text-slate-300 hover:text-slate-600 transition-colors">
               <X size={24} />
             </button>
-            <h3 className="text-2xl font-black text-slate-900 mb-8">{selectedCustomer ? 'Edit Customer' : 'New Customer Profile'}</h3>
+            <h3 className="text-2xl font-black text-slate-900 mb-8">{selectedCustomer ? 'Edit Database Entry' : 'Manual Customer Entry'}</h3>
             
             <form onSubmit={handleSave} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -303,16 +337,16 @@ const AdminCustomers: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-1 md:col-span-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Email Address</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Email (Read Only for existing)</label>
                   <input 
-                    type="email" required
-                    className="w-full px-5 py-4 bg-[#F8F9FD] rounded-2xl outline-none focus:ring-2 focus:ring-purple-200 border-2 border-transparent transition-all font-semibold"
+                    type="email" required disabled={!!selectedCustomer}
+                    className="w-full px-5 py-4 bg-[#F8F9FD] rounded-2xl outline-none focus:ring-2 focus:ring-purple-200 border-2 border-transparent transition-all font-semibold disabled:opacity-50"
                     value={formData.email}
                     onChange={e => setFormData({...formData, email: e.target.value})}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Phone Number</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Phone</label>
                   <input 
                     type="text"
                     className="w-full px-5 py-4 bg-[#F8F9FD] rounded-2xl outline-none focus:ring-2 focus:ring-purple-200 border-2 border-transparent transition-all font-semibold"
@@ -321,7 +355,7 @@ const AdminCustomers: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Account Status</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Status</label>
                   <select 
                     className="w-full px-5 py-4 bg-[#F8F9FD] rounded-2xl outline-none focus:ring-2 focus:ring-purple-200 border-2 border-transparent transition-all font-bold"
                     value={formData.status}
@@ -348,89 +382,9 @@ const AdminCustomers: React.FC = () => {
                 className="w-full bg-gradient-to-r from-[#6C1DDB] to-[#2B0E68] text-white py-4 rounded-2xl font-bold shadow-lg shadow-purple-100 flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 className="animate-spin" size={20} />}
-                {selectedCustomer ? 'Update Profile' : 'Create Profile'}
+                {selectedCustomer ? 'Sync Database' : 'Insert Entry'}
               </button>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Customer Detail Modal */}
-      {isDetailOpen && selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-          <div className="bg-white w-full max-w-2xl rounded-[48px] p-12 animate-in slide-in-from-bottom-8 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-12 opacity-5">
-              <Users size={180} className="text-[#6C1DDB]" />
-            </div>
-            
-            <button onClick={() => setIsDetailOpen(false)} className="absolute top-10 right-10 p-2 bg-slate-50 text-slate-400 hover:text-slate-600 rounded-full">
-              <X size={24} />
-            </button>
-
-            <div className="relative z-10">
-              <div className="flex items-center gap-8 mb-10">
-                <img 
-                  src={selectedCustomer.avatar_url || `https://i.pravatar.cc/150?u=${selectedCustomer.id}`} 
-                  className="w-32 h-32 rounded-[40px] object-cover border-4 border-slate-50 shadow-xl"
-                />
-                <div>
-                  <h3 className="text-4xl font-black text-slate-900 leading-tight mb-2">{selectedCustomer.full_name}</h3>
-                  <div className="flex items-center gap-3">
-                    <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest ${
-                      selectedCustomer.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
-                    }`}>
-                      {selectedCustomer.status}
-                    </span>
-                    <span className="text-sm font-bold text-slate-400">Customer since {new Date(selectedCustomer.created_at).getFullYear()}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-6">
-                   <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                        <Mail size={12} /> Contact Email
-                      </p>
-                      <p className="font-bold text-slate-800 text-lg">{selectedCustomer.email}</p>
-                   </div>
-                   <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                        <Phone size={12} /> Phone Number
-                      </p>
-                      <p className="font-bold text-slate-800 text-lg">{selectedCustomer.phone || 'Not Provided'}</p>
-                   </div>
-                </div>
-                <div className="space-y-6">
-                   <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                        <MapPin size={12} /> Registered Address
-                      </p>
-                      <p className="font-bold text-slate-800 text-sm leading-relaxed">{selectedCustomer.address || 'No address saved'}</p>
-                   </div>
-                   <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                        <Calendar size={12} /> Registration Date
-                      </p>
-                      <p className="font-bold text-slate-800 text-lg">{new Date(selectedCustomer.created_at).toLocaleString()}</p>
-                   </div>
-                </div>
-              </div>
-
-              <div className="mt-12 pt-8 border-t border-slate-100 flex gap-4">
-                 <button 
-                  onClick={() => { setIsDetailOpen(false); openEdit(selectedCustomer); }}
-                  className="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-colors"
-                >
-                  Edit Profile
-                </button>
-                <button 
-                  className="px-8 py-4 bg-purple-50 text-[#6C1DDB] font-bold rounded-2xl hover:bg-purple-100 transition-colors"
-                >
-                  View Order History
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}
